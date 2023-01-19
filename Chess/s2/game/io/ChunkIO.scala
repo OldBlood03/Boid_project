@@ -77,49 +77,70 @@ object ChunkIO:
       if !header.mkString.startsWith("CHESS") then throw CorruptedChessFileException("Unknown file type");
       // Read the file header and the save date
       def chunkRead (buff:Buffer[(String,String)]) : Buffer[(String,String)] = {
+        // one chunk as a string
         val chunk = chunkHeader.mkString
         if !chunk.contains("END") then
-          Helpers.readFully(chunkHeader, input)
+          // the contents of said chunk as an array
           val contents = new Array [Char](Helpers.extractChunkSize(chunkHeader))
+          // reading the contents
           Helpers.readFully(contents, input)
+          // reading the next header
+          Helpers.readFully(chunkHeader, input)
+          // adding the contents to the buffer
           buff += chunk->contents.mkString
+          // reading the next chunk
           chunkRead(buff)
         buff
       }
+      // collecting all the chunks as header -> content pairs
       val chunks = chunkRead(Buffer[(String, String)]())
-      chunks.foreach(println)
+      val players = chunks.groupBy(_._1.toUpperCase.contains("PLR"))(true)
+      // finding if there are the correct number of players
+      val enoughPlayers :Boolean = players.size == 2
+      // making a collection of pairs of color -> player name
+      val playerColorName = players.map(x =>
+        (if x._2.head == 'W' then
+          White
+        else if x._2.head == 'B' then
+          Black
+        else
+          throw CorruptedChessFileException("Unexpected player color"))
+        // drop the color and name length and take the name number of characters from the string
+        -> x._2.drop(2).take(x._2(1).asDigit))
+      if !enoughPlayers || !playerColorName.exists(_._1 == White) || !playerColorName.exists(_._1 == Black) then
+        throw CorruptedChessFileException("Unexpected players");
+      playerColorName.foreach(x=>game.addPlayer(Player(x._2, x._1)))
 
-      // Process the data we just read.
-      // NOTE: To test the line below you must test the class once with a broken header
+      // working on the pieces
+      val PlayerAndPiece = players.map(x=>((if x._2(0) == 'B' then game.getBlack else game.getWhite),x._2.drop(x._2(1).asDigit + 2)))
+      // method that uses a regex to match all the pieces and returns them in a buffer
+      def findPieces (player: Player,input:String): Buffer[(Piece, Int,Int)] = {
+        // purposefully making the regex broader so that errors in the file format can cause exceptions
+        val regex = """([A-X])?([a-x])([1-8])""".r.unanchored
+        val matches = regex.findAllMatchIn(input)
+        (for m <- matches yield (m.group(1),m.group(2),m.group(3))).map(x=>
+          (x._1 match
+            case "K" => King(player)
+            case "Q" => Queen(player)
+            case "R" => Rook(player)
+            case "B" => Bishop(player)
+            case "N" => Knight(player)
+            case null => Pawn(player)
+            case a => throw CorruptedChessFileException ("No such piece")
+          , if x._2(0).toInt - 96 <= 8 && x._2(0).toInt - 96 > 0 then
+            x._2(0).toInt - 96
+          else
+            throw CorruptedChessFileException ("no such position")
+            , x._3(0).asDigit )).toBuffer
 
-
-
-      // The version information and the date are not used in this
-      // exercise
-
-      // Store all of the (typically 2) player data chunks here for later inspection
-      val playerChunks = Buffer[String]()
-      // Store the comment block's (CMT) content here
-      var commentString: Option[String] = None
-
-      // *************************************************************
-      //
-      // EXERCISE
-      //
-      // ADD CODE HERE FOR READING THE
-      // DATA FOLLOWING THE MAIN HEADERS
-      //
-      //
-      // *************************************************************
-
-      // ChunkIO 1
-      // These values are saved for testing that correct data chunk was read.
+      }
+      // set the game pieces on the board
+      PlayerAndPiece.foreach(x=>findPieces(x._1.getOrElse(throw CorruptedChessFileException("Unexpected players")),x._2).foreach(y=>game.board.setPiece(y._1, y._2-1, y._3-1)))
+      val playerChunks = players.map(_._2).toBuffer
+      var commentString: Option[String] = chunks.find(_._1.toUpperCase.contains("CMT")).map(_._2)
+      // save the player and comment data in global variables for testing
       this.prevPlayerData = playerChunks
       this.prevCommentData = commentString
-
-      // ChunkIO 2 & 3
-      // If we reach this point the Game-object should now have the proper players and
-      // a fully set up chess board. Therefore we might as well return it.
 
       game;
 
