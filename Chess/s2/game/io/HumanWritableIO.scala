@@ -1,73 +1,113 @@
 package s2.game.io
 
+import collection.mutable.Buffer
 import s2.game.*
-import java.io.{BufferedReader, IOException, Reader}
 
-/** ********************************************************************
-  *
-  * This file is returned in Exercise 3.2
-  *
-  * The idea is to read a file written manually by someone. There can be useless whitespace all around the file.
-  */
+import scala.util.matching.*
+import java.io.{BufferedReader, FileNotFoundException, FileReader, IOException, InputStreamReader, Reader, StreamCorruptedException}
+
+def interpretPiece (piece:String, game:Game, player:Player, column:String, row:String) =
+  try
+    game.board.setPiece( piece match
+      case "king" => King(player)
+      case "queen" => Queen(player)
+      case "rook" => Rook(player)
+      case "bishop" => Bishop(player)
+      case "knight" => Knight(player)
+      case "pawn" => Pawn(player)
+      case _ => throw CorruptedChessFileException("unknown chess piece"), column(0).toInt - 97, row.toInt -1)
+    catch
+      case a:CorruptedChessFileException => throw a
+      case e => throw CorruptedChessFileException("invalid position")
+
+
+trait IReader(val outerBlock: Regex, val innerBlock: Regex):
+  def readToGame(game: Game, line: String): Option[Array[String]]
+end IReader
+
+class ReadPlayer extends IReader("""game\W*metadata""".r.unanchored, """\w*(black|white)\W*:\s*(.*)""".r.unanchored) :
+  override def readToGame(game: Game, line: String): Option[Array[String]] =
+    line match
+      case innerBlock(color, name) =>
+        game.addPlayer(
+          Player(name.takeWhile(x => !"""\w""".r.matches(x.toString)).concat(name.dropWhile(x => !"""\w""".r.matches(x.toString)).split(' ').map(_.capitalize).mkString(" ")),
+            if color == "white" && !game.getWhite.isDefined then
+              White
+            else if color == "black" && !game.getWhite.isDefined then
+              Black
+            else
+              throw CorruptedChessFileException("too many players of same color")))
+    None
+
+class ReadDate extends IReader("""game\W*metadata""".r.unanchored, """date:(\d|\d{2})\.(\d|\d{2})\.(\d{4})""".r) :
+  override def readToGame(game: Game, line: String): Option[Array[String]] =
+    line match
+      case innerBlock(day, month, year) => //implement what you want for processing the date
+    None
+/* The inner block regex is shitty because it includes more than it should: incorrect inputs should be ignored
+ for backwards compatability, but there is a test that requires you to throw an exception for an incorrect position
+ so what do I know */
+class ReadWhitePiece extends IReader("""white""".r, """([kqbrpn]\w*).*:.*([a-k]).*([1-8])""".r) :
+  override def readToGame(game: Game, line: String): Option[Array[String]] =
+    val player = game.getWhite.getOrElse(throw CorruptedChessFileException("player not defined") )
+    line match
+      case innerBlock(piece, column, row) => interpretPiece(piece, game, player, column, row)
+    None
+
+class ReadBlackPiece extends IReader("""black""".r, """([kqbrpn]\w*)\s*:\s*([a-k])\s*([1-8])""".r) :
+  override def readToGame(game: Game, line: String): Option[Array[String]] =
+   val player = game.getBlack.getOrElse(throw CorruptedChessFileException("player not defined") )
+    line match
+      case innerBlock(piece, column, row) =>
+        interpretPiece(piece, game, player, column, row)
+    None
+
 
 object HumanWritableIO:
 
   def loadGame(input: Reader): Game =
 
-    /** This is the game object this method will fill with data. The object is returned when the file ends and
-      * everything is ok.
-      */
+    def readTrimmed(lineReader: BufferedReader) = {
+      val line = lineReader.readLine()
+      if line != null then
+        line.trim.toLowerCase
+      else
+        line
+    }
+    val readerBuffer = Buffer[IReader]()
+
+    readerBuffer += ReadPlayer()
+    readerBuffer += ReadDate()
+    readerBuffer += ReadWhitePiece()
+    readerBuffer += ReadBlackPiece()
 
     val board = Board()
     val game = Game(board)
-
-    /*
-    You might want to keep track of different required parts of the file
-     if some of these are missing, the file is not valid and a CorruptedChessFileException should be thrown
-     If you figure out something better, you don't have to keep these variables.
-     */
-    var infoRead = false
-    var whiteRead = false
-    var blackRead = false
 
     // BufferedReader allows us to read line by line (readLine method)
     val lineReader = BufferedReader(input)
 
     try
 
-      /*
-       * Read the first line, i.e. the header.
-       * You can also use this variable for reading all the section headers,
-       * or you can do better and use only vals and get rid of this.
-       */
-
-      var currentLine = lineReader.readLine().trim.toLowerCase
-
-      // Process the header we just read.
-      // NOTE: To test the line below you must test the class once with a
-      // broken header
-
-      if !((currentLine.startsWith("chess")) && (currentLine.endsWith("save file"))) then
+      var line = readTrimmed(lineReader)
+      while line == "" do
+        line = readTrimmed(lineReader)
+      if !((line.startsWith("chess")) && (line.endsWith("save file"))) then
         throw new CorruptedChessFileException("Unknown file type")
-
-      // The version information and the date are not used in this
-      // exercise
-
-      // *************************************************************
-      //
-      // EXERCISE
-      //
-      // ADD CODE HERE FOR READING THE
-      // DATA FOLLOWING THE MAIN HEADERS
-      //
-      //
-      // *************************************************************
-
-      // If we reach this point the Game-object should now have the proper
-      // players and
-      // a fully set up chess board. Therefore we might as well return it.
-
-      // If there is something missing, throw a CorruptedChessFileException
+      line = readTrimmed(lineReader)
+      val blockRegex = """\w*\#(.*)""".r
+      var currentBlock = ""
+      val pastBlocks = Buffer[String]()
+      while line != null do
+        readerBuffer.foreach(x => if (x.outerBlock.matches(currentBlock) && x.innerBlock.matches(line)) then x.readToGame(game,line))
+        line match
+          case blockRegex (block) =>
+            currentBlock = block
+            pastBlocks += block
+          case _ =>
+        line = readTrimmed(lineReader)
+      if !pastBlocks.exists("""white""".r.matches(_)) || !pastBlocks.exists("""black""".r.matches(_)) then
+        throw CorruptedChessFileException("Missing block")
 
       game
 
