@@ -30,6 +30,10 @@ package Utility:
 		def -=(vec:SpacialVector) =
 			X -= vec.x
 			Y -= vec.y
+		@targetName("vectorMultiplicationAssignment")
+		def *=(vec:SpacialVector) =
+			X *= vec.x
+			Y *= vec.y
 		@targetName("matrixMultiplication")
 		def *(matrix:SpacialMatrix):SpacialVector =
 			SpacialVector(matrix.x1,matrix.y1) * X + SpacialVector(matrix.x2,matrix.y2) * Y
