@@ -16,5 +16,10 @@ package Utility:
 		}
 		// in radians
 		def apply (angle:Double): UnitVector = {
-			new UnitVector(cos(angle),sin(angle))
+			UnitVector(cos(angle),sin(angle))
 		}
+		def apply (copy: UnitVector, offsetAngle:Double): UnitVector = {
+			val vec = copy.rotate(offsetAngle)
+			new UnitVector (vec.x, vec.y)
+		}
+
