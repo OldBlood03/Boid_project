@@ -7,44 +7,85 @@ import scala.util.Random
 package main_stuff:
 
 	final class Game:
-		// viewport width
-		val width = 200
+		// viewport
+		val width = 500
+		val height = 600
+		// padding for the boids to turn around
+		val margin = 300
 
-		// viewport height
-		val height = 150
+
 		// max speed of bird
-		val maxSpeed = 10
-
-		val numberOfBoids = 15
+		val speedLimit = 50
+		// min speed of bird
+		val minSpeed = 5
 		// in radians
 		val FOV = math.Pi
 		// arbitrary range of view
-		val range = 10
+		private val range = 100
+
+		private val numberOfBoids = 70
 
 		// how aggressively the birds gravitate towards the center of their local group
-		var centeringFactor = 0.005
+		private var centeringFactor = 0.005
 
 		// how xenophobic the birds are
-		var separationFactor = 0.005
+		private var separationFactor = 0.005
 		// minimum distance after which birds start avoiding each other
-		var minDistance = 20
+		private var minDistance = 20
 
-		val random = (x:Double) => {
+		private val random = (x:Double) => {
 			Random.nextDouble() * x
 		}
 		// initialize the boids in random positions and random velocities in bounds
-		val boids = Array.fill[Boid](numberOfBoids)(Boid(SpacialVector(random(width),random(height)),SpacialVector(random(1)+1 ,random(1)+1 )))
+		private val boids = Array.fill[Boid](numberOfBoids)(Boid(SpacialVector(random(width),random(height)),SpacialVector(random(30)+1 ,random(30)+1 )))
 
 		// field of view
-		def inFOV(of:Boid,target:Boid) = of.heading.inArc(target.pos - of.pos,FOV)
+		private def inFOV(of:Boid,target:Boid) = of.heading.inArc(target.pos - of.pos,FOV)
 
-		def distance(boid:Boid,other:Boid) ={
+		private def distance(boid:Boid,other:Boid) ={
 			(boid.pos - other.pos).length
 		}
+		// this is primarily used for visualization: to draw lines between boids that are in range
+		private def rangeNeighbours (boid:Boid):Array[Boid] = for i <- boids if distance(boid, i) <= range yield i
 
-		def keepWithinBounds(boid:Boid) ={
-			val margin = 200
-			val turnFactor = 1
+		// this is primarily used for visualization: to draw lines between boids that are in fov
+		private def FOVNeighbours (boid:Boid):Array[Boid] = for i <- boids if inFOV(boid, i) yield i
+
+		private def influencingNeighbours (boid:Boid):Array[Boid] =
+			for i <- boids if inFOV(boid, i) && distance(boid, i) <= range yield i
+
+		private def moveTowardsCenter (boid:Boid) = {
+			var dv = SpacialVector(0,0)
+			val neighbours = influencingNeighbours (boid)
+			for i:Boid <- neighbours do
+				dv += (i.pos-boid.pos)*centeringFactor
+			if (neighbours.length > 0) then
+				boid.shiftVelocity(dv/neighbours.length)
+		}
+
+		private def separate (boid: Boid) = {
+			var dv = SpacialVector (0,0)
+			val neighbours = influencingNeighbours (boid)
+			for i:Boid <- neighbours if distance(boid,i) < minDistance do
+				dv += (boid.pos-i.pos)*separationFactor
+			boid.shiftVelocity(dv)
+		}
+		// look at neighbours and go at the average velocity
+		private def matchVelocity (boid: Boid) = {
+			var average = SpacialVector (0,0)
+			val neighbours = influencingNeighbours (boid)
+			for i:Boid <- neighbours do
+				average += i.velocity
+			if neighbours.length >0 then
+				boid.shiftVelocity((average/neighbours.length) - boid.velocity)
+		}
+		private def limitSpeed (boid:Boid) = {
+			boid.shiftVelocity(-boid.velocity*math.max(0,boid.velocity.length/speedLimit))
+			boid.shiftVelocity(boid.velocity*math.max(0,boid.velocity.length/minSpeed))
+		}
+
+		private def keepWithinBounds(boid:Boid) ={
+			val turnFactor = 10
 			if boid.pos.x < margin then
 				boid.shiftVelocity(SpacialVector(turnFactor,0))
 			if boid.pos.x > width - margin then
@@ -55,69 +96,57 @@ package main_stuff:
 				boid.shiftVelocity(SpacialVector(0,-turnFactor))
 		}
 
-		// this is primarily used for visualization: to draw lines between boids that are in range
-		def rangeNeighbours (boid:Boid):Array[Boid] = for i <- boids if distance(boid, i) <= range yield i
+		def getBoids = boids
 
-		// this is primarily used for visualization: to draw lines between boids that are in fov
-		def FOVNeighbours (boid:Boid):Array[Boid] = for i <- boids if inFOV(boid, i) yield i
+		def update (boid: Boid) = {
 
-		def influencingNeighbours (boid:Boid):Array[Boid] =
-			for i <- boids if inFOV(boid, i) && distance(boid, i) <= range yield i
-
-		def moveTowardsCenter (boid:Boid) = {
-			var dv = SpacialVector(0,0)
-			val neighbours = influencingNeighbours (boid)
-			for i:Boid <- neighbours do
-				dv += (i.pos-boid.pos)*centeringFactor
-			if (neighbours.length > 0) then
-				boid.shiftVelocity(dv/neighbours.length)
-		}
-
-		def separate (boid: Boid) = {
-			var dv = SpacialVector (0,0)
-			val neighbours = influencingNeighbours (boid)
-			for i:Boid <- neighbours if distance(boid,i) < minDistance do
-				dv += (boid.pos-i.pos)*separationFactor
-			boid.shiftVelocity(dv)
-		}
-		// look at neighbours and go at the average velocity
-		def matchVelocity (boid: Boid) = {
-			var average = SpacialVector (0,0)
-			val neighbours = influencingNeighbours (boid)
-			for i:Boid <- neighbours do
-				average += i.velocity
-			if neighbours.length >0 then
-				boid.shiftVelocity((average/neighbours.length) - boid.velocity)
-		}
-
-		def limitSpeed (boid:Boid) = {
-			boid.shiftVelocity(-boid.velocity*math.max(0,boid.velocity.length/maxSpeed))
+			moveTowardsCenter(boid)
+			keepWithinBounds(boid)
+			limitSpeed(boid)
+			separate(boid)
+			matchVelocity(boid)
+			boid.updatePosition()
 		}
 
 	end Game
 
-import javafx.application.Application
-import javafx.scene.Scene
-import javafx.scene.layout.StackPane
-import javafx.stage.Stage
-import javafx.scene.control.Label
+	import scalafx.animation.AnimationTimer
+	import scalafx.application.JFXApp3
+	import scalafx.geometry.Insets
+	import scalafx.scene.Scene
+	import scalafx.scene.effect.DropShadow
+	import scalafx.scene.layout.{BorderPane, HBox}
+	import scalafx.scene.paint.Color.*
+	import scalafx.scene.paint.*
+	import scalafx.scene.text.Text
+	import scalafx.scene.canvas.Canvas
+	import scalafx.scene.input.MouseEvent
 
-class Test extends Application {
-  println("Test()")
+	import java.awt.event.MouseEvent
 
-  override def start(primaryStage: Stage) = {
-    primaryStage.setTitle("Sup!")
-
-    val root = new StackPane
-    root.getChildren.add(new Label("Hello world!"))
-
-    primaryStage.setScene(new Scene(root, 300, 300))
-    primaryStage.show()
-  }
-}
-
-object Test {
-  def main(args: Array[String]) = {
-    Application.launch(classOf[Test], args: _*)
-  }
-}
+	object ScalaFXHelloWorld extends JFXApp3 {
+	val game = Game ()
+	override def start(): Unit = {
+		stage = new JFXApp3.PrimaryStage {
+		  //    initStyle(StageStyle.Unified)
+		  title = "Boids"
+		  scene = new Scene {
+			val border = new BorderPane
+			fill = Color.rgb(38, 38, 38)
+			val canvas = new Canvas(game.width, game.height)
+			val gc = canvas.graphicsContext2D
+			border.center = canvas
+			root = border
+			val timer = AnimationTimer { time =>
+				gc.fill = Color.rgb(38, 38, 38)
+				gc.fillRect(0,0,game.width, game.height)
+				for boid <- game.getBoids do
+					game.update(boid)
+					gc.fill = Color.LightBlue
+					gc.fillOval(boid.pos.x, boid.pos.y, 5, 5)
+			}
+			timer.start()
+		}
+		}
+	}
+	}
