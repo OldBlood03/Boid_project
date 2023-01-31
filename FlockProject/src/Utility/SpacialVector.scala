@@ -45,7 +45,7 @@ package Utility:
 		}
 //-----------------------------------------------------------------------------
 
-		def rotateTo (vecTo: SpacialVector) =
+		def rotateTo (vecTo: SpacialVector):SpacialVector =
 			val angle = tan((vecTo-this).length/this.length)
 			val transformedVector = this*SpacialMatrix.rotationMatrix(angle)
 			if transformedVector == vecTo then
@@ -78,7 +78,6 @@ package Utility:
 			else
 				throw UnexpectedAngleException("angle of arc has to be between 0 and 360 inclusive")
 		}
-
 		override def toString:String = s"($x, $y)"
 	}
 	object SpacialVector:

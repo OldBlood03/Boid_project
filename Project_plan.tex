@@ -1,0 +1,158 @@
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[UKEnglish]{babel}
+\usepackage{graphicx}
+\usepackage{fullpage}
+\usepackage{float}
+\usepackage{tikz-uml}
+
+\title{Flock simulation plan}
+\date{\today}
+\author{Oliver Longhurst (100912014)
+\\ $1^{st}$ year B.S. Computational Engineering}
+\begin{document}
+\maketitle
+\section{Overview}
+\subsection{main goal}
+The chief aim is to make a simulation where a user-selected number of bird-oid objects (boids) move in a flock. To simplify the project, the render restricts movement to two dimensions.
+\vspace{2ex}
+The simulation emerges from three main rules that each boid follows:
+
+\begin{center}
+    \begin{enumerate}
+    \item Separation: Avoids colliding into other boids
+    \item Alignment: Matches the average speed of surrounding boids 
+    \item Cohesion: Tends towards the center of the flock
+\end{enumerate}
+\end{center}
+
+In addition, each boid also follows two secondary rules to keep them within the bounds of the virtual camera and limit their speed: If a boid drifts into a margin around the border of the viewport, it is nudged back towards the center, and if a boid is too fast, it slows down.
+
+\vspace{2ex}
+Furthermore, the program must fulfill the requirements:
+
+\begin{itemize}
+
+    \item Graphical user interface
+
+    \item In the beginning every member moves in random direction. Read the initial state from a file, define format yourself.
+
+    \item The possibility to change the weights of the rules (by default use ones with the most natural results).
+
+    \item Other functionality such as different starting conditions, live parameter control etc.
+
+\end{itemize}
+\subsection{polish}
+
+The above describes what will be, but there are several improvements that could be. For one, the UI could contain sliders to control each parameter of the simulation, a button to pause the simulation, and an option to show and hide the traces and FOV of each bird. Secondly, there could be obstacles for the boids to avoid. However, these should only polish the end product and not detract from it; they are strictly a secondary priority.   
+
+\section{Functionality}
+The program is a visual simulation of flocking. While it has its uses in computer graphics, in this project it is eye-candy with variable parameters, nothing more. The end result may resemble something akin to the following:
+\vspace{2ex}
+\begin{figure}[H]
+    \centering
+    \setlength{\fboxsep}{0.7pt}
+    \setlength{\fboxrule}{3pt}
+    \fbox{\includegraphics[scale=0.3]{boids}}
+    \caption{White dots represent boids}
+\end{figure}
+\vspace{2ex}
+That is without any sliders to control parameters.
+\section{UI}
+The UI will be limited to sliders for all the parameters, a button for stopping and restarting time, a button for showing traces, and a button for showing the FOV of each bird.
+\section{Save Files}
+Save files have no use in such a chaotic simulation, having UI sliders is much more convenient and allows for better adjustment during runtime. The only use of a save file would be to define the starting point of each boid, yet any starting state will result in similar flocking behaviour with the same parameters. 
+\section{Errors}
+Inputs are limited and predefined, therefore any error would come from poor coding which can be avoided through rigorous TDD.
+\section{Class Structure}
+\vspace{2ex}
+\begin{tikzpicture}
+\begin{umlpackage}{Flock Project}
+\begin{umlpackage}[x=0,y=0]{Utility}
+\begin{umlpackage}[x=10.5,y=-7.8]{}
+\end{umlpackage}
+    \umlclass[x=2ex, y= -40ex,type = Object]{SpacialVector-}{}{
+    def apply (Double, Double):SpacialVector \\
+    def apply (SpacialVector, Double):SpacialVector
+    }
+    \umlclass[x=38ex, y=18ex]{SpacialMatrix}{
+    <<get>> -x1:Double \\
+    <<get>> -x2:Double \\
+    <<get>> -y1:Double \\
+    <<get>> -y2:Double
+    }{
+    }
+    \umlclass[x=50ex, y=-5ex, type=Object]{SpacialMatrix-}{}{
+        def rotationMatrix (Double):SpacialMatrix
+    }
+    \umlclass[]{SpacialVector}{
+    -x: Double \\-y: Double}{
+    def length: Double \\
+    def direction: Double \\
+    def * (Double):SpacialVector \\
+    def + (Double):SpacialVector \\
+    def - (Double):SpacialVector \\
+    def / (Double):SpacialVector \\
+    def += (SpacialVector):SpacialVector \\
+    def -= (SpacialVector):SpacialVector \\
+    def *= (Double):SpacialVector \\
+    def * (SpacialMatrix):SpacialVector \\
+    def unary\_- :SpacialVector \\
+    def dot (SpacialVector):Double \\
+    def rotateTo (SpacialVector): SpacialVector \\
+    def rotate (Double):SpacialVector \\
+    def inArc (SpacialVector, Double):Boolean \\
+    def toString:String}
+\end{umlpackage}
+
+\begin{umlpackage}[x=9,y=-11]{Behaviour}
+\umlclass[x=-3.2ex,y=-20ex]{Boid}{
+<<get>>-pos:SpacialVector \\
+<<get>>-velocity:SpacialVector \\
+<<get>>-heading:SpacialVector \\
+}{
+def updatePosition(): Unit \\
+def shiftVelocity (SpacialVector): Unit \\
+-def updateHeading():Unit \\
+toString:String
+}
+\umlclass[type=Object]{Boid-}{}{
+def apply(SpacialVector, SpacialVector): Unit
+}
+\begin{umlpackage}[x=0,y=-5]{}
+\end{umlpackage}
+\end{umlpackage}
+\umlclass[x=-0, y=-81ex]{Game}{
+        - width:Double \\
+		- height:Double \\
+		- margin:Double \\
+
+		- speedLimit:Double \\
+	- minSpeed:Double \\
+		- FOV:Double \\
+		- val range:Double \\
+		- val numberOfBoids:Int \\
+
+		- centeringFactor:Double \\
+	- separationFactor:Double \\
+		- turnFactor:Double \\
+		- minDistance
+}{
+- def neighboursInView: Array[Boid] \\
+- def moveTowardsCenter(Boid): Unit \\
+- def separate (Boid): Unit \\
+- def matchVelocity (Boid): Unit \\
+- def limitSpeed (Boid): Unit \\
+- def keepWithinBounds (Boid): Unit
+
+}
+\end{umlpackage}
+\umlHVimport[anchors= 180 and -90]{Behaviour}{Utility}
+\umlVHunicompo[anchors= -15 and 0]{Boid-}{Boid}
+\umlVHunicompo[anchors= 90 and 0]{SpacialMatrix-}{SpacialMatrix}
+\umlVHunicompo[anchors= 17 and 0]{SpacialVector-}{SpacialVector}
+\umlHVdep[anchors=10 and -90]{SpacialVector}{SpacialMatrix}
+
+\end{tikzpicture}
+\end{document}
