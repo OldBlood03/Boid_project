@@ -1,5 +1,5 @@
 package Tests:
-	import Exceptions.NonUnitVectorException
+	import Exceptions.{IndefiniteVectorException, NonUnitVectorException}
 	import Utility.*
 	import org.scalatest.flatspec.AnyFlatSpec
 	import org.scalatest.matchers.should.*
@@ -89,6 +89,18 @@ package Tests:
 			vec.inArc(testVec, java.lang.Math.PI*2) shouldEqual(true)
 			testVec = SpacialVector (-1,-10)
 			vec.inArc(testVec, java.lang.Math.PI*2) shouldEqual(true)
+		}
+		"A VelocityVector" should "throw an exception when apply instantiated with length 0" in {
+			assertThrows[IndefiniteVectorException](VelocityVector(0,0))
+		}
+		val vec = VelocityVector(1,1)
+		it should "always have a non-zero heading" in {
+			vec.getHeading.length shouldEqual(math.sqrt(2))
+			vec.shift(SpacialVector(-1,-1))
+			assert(vec.getHeading.length > 0)
+		}
+		it should "always have a heading of length 1" in {
+			vec.getHeading.length shouldEqual (1.toDouble +-0.001)
 		}
 
 	}

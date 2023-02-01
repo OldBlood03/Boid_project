@@ -59,7 +59,6 @@ package Utility:
 		// tells if the argument vector is within an angle arc of where this
 		// is pointing
 		def inArc (vec: SpacialVector, angle:Double):Boolean = {
-
 			val arcAnd = () => {
 				val left = SpacialVector (this, java.lang.Math.PI/2 - angle/2)
 				val right = SpacialVector (this, -java.lang.Math.PI/2 + angle/2)
@@ -78,6 +77,7 @@ package Utility:
 			else
 				throw UnexpectedAngleException("angle of arc has to be between 0 and 360 inclusive")
 		}
+
 		override def toString:String = s"($x, $y)"
 	}
 	object SpacialVector:
