@@ -8,26 +8,24 @@ package main_stuff:
 
 	final class Game:
 		// viewport
-		val width = 500
+		val width = 1000
 		val height = 600
 		// padding for the boids to turn around
-		val margin = 300
+		val margin = 0
 
 		// max speed of bird
-		val speedLimit = 50
-		// min speed of bird
-		val minSpeed = 5
+		val speedLimit = 1
 		// in radians
 		val FOV = math.Pi
 		// arbitrary range of view
 		private val range = 100
 
-		private val numberOfBoids = 70
+		private val numberOfBoids = 200
 
 		// how aggressively the birds gravitate towards the center of their local group
-		private var centeringFactor = 0.005
+		private var centeringFactor = 0.05
 		// how xenophobic the birds are
-		private var separationFactor = 0.005
+		private var separationFactor = 0.05
 		// minimum distance after which birds start avoiding each other
 		private val turnFactor = 10
 		private var minDistance = 20
@@ -36,7 +34,7 @@ package main_stuff:
 			Random.nextDouble() * x
 		}
 		// initialize the boids in random positions and random velocities in bounds
-		private val boids = Array.fill[Boid](numberOfBoids)(Boid(SpacialVector(random(width),random(height)),SpacialVector(random(30)+1 ,random(30)+1 )))
+		private val boids = Array.fill[Boid](numberOfBoids)(Boid(SpacialVector(random(width),random(height)),SpacialVector(random(5)+1 ,random(5)+1 )))
 
 		// field of view
 		private def inFOV(of:Boid,target:Boid) = of.heading.inArc(target.pos - of.pos,FOV)
@@ -67,7 +65,7 @@ package main_stuff:
 		// Separation: don't get too close to other boids
 		private def separate (boid: Boid) = {
 			var dv = SpacialVector (0,0)
-			val neighbours = neighboursInView (boid)
+			val neighbours = neighboursInView(boid)
 			for i:Boid <- neighbours if distance(boid,i) < minDistance do
 				dv += (boid.pos-i.pos)*separationFactor
 			boid.shiftVelocity(dv)
@@ -84,8 +82,8 @@ package main_stuff:
 		}
 
 		private def limitSpeed (boid:Boid) = {
-			boid.shiftVelocity(-boid.velocity*math.max(0,boid.velocity.length/speedLimit))
-			boid.shiftVelocity(boid.velocity*math.max(0,boid.velocity.length/minSpeed))
+			if (boid.velocity.length > speedLimit) then
+				boid.shiftVelocity(-boid.velocity + boid.velocity.direction*speedLimit)
 		}
 
 		private def keepWithinBounds(boid:Boid) ={
@@ -102,17 +100,17 @@ package main_stuff:
 		def getBoids = boids
 
 		def update (boid: Boid) = {
-
-			moveTowardsCenter(boid)
-			keepWithinBounds(boid)
-			limitSpeed(boid)
-			separate(boid)
 			matchVelocity(boid)
+			moveTowardsCenter(boid)
+			separate(boid)
+			limitSpeed(boid)
+			keepWithinBounds(boid)
 			boid.updatePosition()
 		}
 
 	end Game
 
+	import javafx.scene.control.Button
 	import scalafx.animation.AnimationTimer
 	import scalafx.application.JFXApp3
 	import scalafx.geometry.Insets
@@ -124,6 +122,8 @@ package main_stuff:
 	import scalafx.scene.text.Text
 	import scalafx.scene.canvas.Canvas
 	import scalafx.scene.input.MouseEvent
+	import scalafx.scene.layout._
+	import scalafx.scene.control._
 
 	import java.awt.event.MouseEvent
 
@@ -138,6 +138,7 @@ package main_stuff:
 			fill = Color.rgb(38, 38, 38)
 			val canvas = new Canvas(game.width, game.height)
 			val gc = canvas.graphicsContext2D
+			border.children += new Button("sdadasdasdas")
 			border.center = canvas
 			root = border
 			val timer = AnimationTimer { time =>
