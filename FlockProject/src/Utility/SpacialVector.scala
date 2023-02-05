@@ -66,8 +66,8 @@ package Utility:
 				((vec dot left) >= 0) && ((vec dot right) >= 0)
 			}
 			val arcOr = () => {
-				val left = SpacialVector (this,-angle/2)
-				val right = SpacialVector (this, angle/2)
+				val left = SpacialVector (this,(angle-math.Pi)/2)
+				val right = SpacialVector (this, -(angle-math.Pi)/2)
 				((vec dot left) >= 0) || ((vec dot right) >= 0)
 			}
 			if this.length == 0 then throw IndefiniteVectorException("vector length 0 cannot have an arc in front")
@@ -76,7 +76,7 @@ package Utility:
 			else if (angle > java.lang.Math.PI && angle <= java.lang.Math.PI*2) then
 				arcOr()
 			else
-				throw UnexpectedAngleException("angle of arc has to be between 0 and 360 inclusive")
+				throw UnexpectedAngleException("angle of arc has to be between 0 and 2pi inclusive")
 		}
 
 		override def toString:String = s"($x, $y)"

@@ -11,23 +11,23 @@ package main_stuff:
 		val width = 1000
 		val height = 600
 		// padding for the boids to turn around
-		val margin = 0
+		val margin = 10
 
 		// max speed of bird
-		val speedLimit = 1
+		val speedLimit = 10
 		// in radians
 		val FOV = math.Pi
 		// arbitrary range of view
-		private val range = 100
+		private val range = 40
 
 		private val numberOfBoids = 200
 
 		// how aggressively the birds gravitate towards the center of their local group
-		private var centeringFactor = 0.05
+		private var centeringFactor = 0.1
 		// how xenophobic the birds are
 		private var separationFactor = 0.05
 		// minimum distance after which birds start avoiding each other
-		private val turnFactor = 10
+		private val turnFactor = speedLimit/10
 		private var minDistance = 20
 
 		private val random = (x:Double) => {
@@ -65,7 +65,7 @@ package main_stuff:
 		// Separation: don't get too close to other boids
 		private def separate (boid: Boid) = {
 			var dv = SpacialVector (0,0)
-			val neighbours = neighboursInView(boid)
+			val neighbours = rangeNeighbours(boid)
 			for i:Boid <- neighbours if distance(boid,i) < minDistance do
 				dv += (boid.pos-i.pos)*separationFactor
 			boid.shiftVelocity(dv)
@@ -74,7 +74,7 @@ package main_stuff:
 		// Alignment: look at neighbours and go at the average velocity
 		private def matchVelocity (boid: Boid) = {
 			var average = SpacialVector (0,0)
-			val neighbours = neighboursInView (boid)
+			val neighbours = neighboursInView(boid)
 			for i:Boid <- neighbours do
 				average += i.velocity
 			if neighbours.length >0 then

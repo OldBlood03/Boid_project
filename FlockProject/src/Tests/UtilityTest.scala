@@ -4,6 +4,8 @@ package Tests:
 	import org.scalatest.flatspec.AnyFlatSpec
 	import org.scalatest.matchers.should.*
 
+	import scala.util.Random
+
 	class UtilityTest extends AnyFlatSpec with Matchers{
 		"Correct unit vector" should "not throw an exception" in {
 			noException should be thrownBy( UnitVector(0,1))
@@ -33,20 +35,26 @@ package Tests:
 			val vec2 =  UnitVector (0)
 			assert((vec dot vec2) < 0)
 		}
+		val vec =  SpacialVector (10,0)
+
 		"a SpacialVector" should "be correctly rotated by the rotate method" in {
-			val vec =  SpacialVector (10,0)
 			vec.rotate(java.lang.Math.PI).x shouldBe(-10.toDouble +- UnitVector.getAccuracy)
 			vec.rotate(java.lang.Math.PI/2).y shouldBe(10.toDouble +- UnitVector.getAccuracy)
 			vec.rotate(-java.lang.Math.PI/2).y shouldBe(-10.toDouble +- UnitVector.getAccuracy)
 		}
 		it should "correctly use the addition assignment and subtraction assignment operators" in {
-			val vec =  SpacialVector (10,0)
 			vec += SpacialVector(1,1)
 			vec.x shouldEqual (11)
 			vec.y shouldEqual (1)
 			vec -= SpacialVector(1,1)
 			vec.x shouldEqual (10)
 			vec.y shouldEqual (0)
+		}
+		it should "be correctly offset when instantiated through the angle offset apply method" in {
+			SpacialVector(vec,math.Pi/2).y shouldEqual(10)
+			SpacialVector(vec,math.Pi).x shouldEqual(-10)
+			SpacialVector(vec,math.Pi/4).y shouldEqual(math.sin(math.Pi/4)*vec.length)
+			SpacialVector(vec,-math.Pi/4).y shouldEqual(math.sin(-math.Pi/4)*vec.length)
 		}
 		"A unit vector" should "be correctly rotated when constructed through the rotate apply overload" in {
 			val vec =  UnitVector (java.lang.Math.PI)
@@ -83,12 +91,8 @@ package Tests:
 
 		it should "accept any angle at 2pi arc" in {
 			val vec =  SpacialVector (10,0)
-			var testVec = SpacialVector (0,10)
-			vec.inArc(testVec, java.lang.Math.PI*2) shouldEqual(true)
-			testVec = SpacialVector (0,-10)
-			vec.inArc(testVec, java.lang.Math.PI*2) shouldEqual(true)
-			testVec = SpacialVector (-1,-10)
-			vec.inArc(testVec, java.lang.Math.PI*2) shouldEqual(true)
+			var testVecs = Vector.tabulate[SpacialVector](100)(x => SpacialVector (Random.nextDouble(),Random.nextDouble()))
+			testVecs.forall(x=> vec.inArc(x,math.acos((vec dot x)/(vec.length*x.length))*2+0.0001)) shouldEqual(true)
 		}
 
 	}
