@@ -11,7 +11,7 @@ package main_stuff:
 		val width = 1000
 		val height = 600
 		// padding for the boids to turn around
-		val margin = 10
+		val margin = 20
 
 		// max speed of bird
 		val speedLimit = 10
